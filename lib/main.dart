@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:telephony/telephony.dart';
 
@@ -24,10 +26,12 @@ class OTPVerificationScreen extends StatefulWidget {
   _OTPVerificationScreenState createState() => _OTPVerificationScreenState();
 }
 
-class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
+class _OTPVerificationScreenState extends State
+{
   late TextEditingController _controllerPhoneNumber, _controllerOTP;
   String? _message;
   Telephony telephony = Telephony.instance;
+  String _generatedOTP = '';
 
   @override
   void initState() {
@@ -40,7 +44,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('OTP Verification'),
+        title: const Text('Verificación OTP y SMS'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -51,7 +55,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
               controller: _controllerPhoneNumber,
               keyboardType: TextInputType.phone,
               decoration: const InputDecoration(
-                labelText: 'Enter Phone Number',
+                labelText: 'Ingresar número de teléfono',
               ),
             ),
             const SizedBox(height: 16.0),
@@ -59,13 +63,18 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
               controller: _controllerOTP,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
-                labelText: 'Enter SMS',
+                labelText: 'Ingresar OTP',
               ),
             ),
             const SizedBox(height: 16.0),
             ElevatedButton(
+              onPressed: _sendOTP,
+              child: const Text('Enviar OTP'),
+            ),
+            const SizedBox(height: 16.0),
+            ElevatedButton(
               onPressed: _verifyOTP,
-              child: const Text('Verify OTP'),
+              child: const Text('Verificar OTP'),
             ),
             const SizedBox(height: 16.0),
             if (_message != null)
@@ -79,33 +88,49 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     );
   }
 
-  Future<void> _verifyOTP() async {
+  Future<void> _sendOTP() async {
     String phoneNumber = _controllerPhoneNumber.text;
-    String enteredOTP = _controllerOTP.text;
-
-    // Enviar el OTP al número de teléfono especificado
-    String responseMessage = await _sendOTP(phoneNumber, enteredOTP);
+    _generatedOTP = _generateOTP(6);
+    String responseMessage = await _sendOTPMessage(phoneNumber, _generatedOTP);
 
     setState(() {
       _message = responseMessage;
     });
   }
 
-    Future<String> _sendOTP(String phoneNumber, String otp) async {
+  Future<void> _verifyOTP() async {
+    String enteredOTP = _controllerOTP.text;
+
+    if (enteredOTP == _generatedOTP) {
+      setState(() {
+        _message = 'OTP verificado con éxito!';
+      });
+    } else {
+      setState(() {
+        _message = 'OTP Incorrecto. Ingrese nuevamente.';
+      });
+    }
+  }
+
+  Future<String> _sendOTPMessage(String phoneNumber, String otp) async {
     try {
-      // Aquí enviarías el OTP al número de teléfono especificado
-      // Usando la librería telephony
       await telephony.sendSms(
         to: phoneNumber,
-        message: "Your OTP is: $otp",
+        message: "Tu OTP es: $otp",
       );
 
-      // Como telephony.sendSms() no retorna ningún valor,
-      // no necesitas asignar nada a _result
-      return 'OTP sent successfully!';
+      return 'OTP enviado correctamente!';
     } catch (error) {
-      print('Error sending OTP: $error');
-      throw 'Error sending OTP: $error';
+      print('Error al enviar OTP: $error');
+      throw 'Error al enviar OTP: $error';
     }
+  }
+
+  String _generateOTP(int length) {
+    const chars = '0123456789';
+    final random = Random();
+
+    return String.fromCharCodes(Iterable.generate(
+        length, (_) => chars.codeUnitAt(random.nextInt(chars.length))));
   }
 }
